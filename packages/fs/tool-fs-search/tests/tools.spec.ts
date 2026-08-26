@@ -12,7 +12,8 @@
 
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import { join, sep } from 'node:path'
+import { homedir } from 'node:os'
+import { join, parse, sep } from 'node:path'
 import { createUserMessage, CallId } from '@deepseek-ai/dsh-llm'
 import SystemPrompt, { renderPrompt } from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime, { TOOL_ABORTED_BEFORE_DISPATCH, type ToolExecution, type ToolExecutionToken } from '@deepseek-ai/dsh-tools'
@@ -241,6 +242,7 @@ describe('registration', () => {
     const prompt = renderPrompt(await ctx.systemPrompt.assemble())
     expect(prompt).toContain('Use the glob tool')
     expect(prompt).toContain('Use the grep tool')
+    expect(prompt).toContain('Do not run a basename-only or `**/`-prefixed pattern against the user home')
     expect(prompt).toContain('sampled across top-level entries')
     expect(prompt).not.toContain('sampled across top-level directories')
     const glob = ctx.tools.schemas().find(schema => schema.name === 'glob')
@@ -741,6 +743,30 @@ describe('glob results', () => {
     const { ctx } = await setup()
     expect(text(await call(ctx, 'glob', { pattern: '  ' }))).toContain('pattern must be a non-empty string')
     expect(text(await call(ctx, 'glob', { pattern: '*', path: ' ' }))).toContain('path must be a non-empty string')
+  })
+
+  it('rejects a basename-only glob rooted at the user home before spawning', async () => {
+    const { ctx, subprocess } = await setup()
+    const result = await call(ctx, 'glob', { pattern: 'restart_dsh.js', path: homedir() })
+    expect(result.isError).toBe(true)
+    expect(text(result)).toContain('would recursively scan the entire home directory')
+    expect(subprocess.spawns).toHaveLength(0)
+  })
+
+  it('rejects a recursively unanchored glob rooted at the filesystem root before spawning', async () => {
+    const { ctx, subprocess } = await setup()
+    const result = await call(ctx, 'glob', { pattern: '**/restart_dsh.js', path: parse(homedir()).root })
+    expect(result.isError).toBe(true)
+    expect(text(result)).toContain('would recursively scan the filesystem root')
+    expect(subprocess.spawns).toHaveLength(0)
+  })
+
+  it('allows a basename-only glob under the explicit current directory', async () => {
+    const { ctx, subprocess } = await setup()
+    subprocess.handler = () => runResult('restart_dsh.js\n')
+    const result = await call(ctx, 'glob', { pattern: 'restart_dsh.js', path: '.' })
+    expect(result.isError).toBe(false)
+    expect(subprocess.spawns).toHaveLength(1)
   })
 
   it('threads a valid path through to the spawn as the plain search root element', async () => {

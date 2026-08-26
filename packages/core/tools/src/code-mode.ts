@@ -51,6 +51,8 @@ const TYPESCRIPT_FLAVOR: RunCodeFlavor = {
     + 'does. Call tools as `await tools.name(args)` per the declarations in the system '
     + 'prompt. Use backtick template literals for string data that contains quotes, such as '
     + 'search queries with exact phrases; never paste unescaped quotes into a same-quote literal. '
+    + 'For nested tool arguments, assign objects and arrays to named variables, format them '
+    + 'across lines, and close every `{` or `[` before the surrounding call closes with `)`. '
     + 'Only what you print or return is program output — curate it. Image-bearing '
     + 'subtool results are attached after the run.',
   codeDescription: 'The program: the body of an async TypeScript function.',

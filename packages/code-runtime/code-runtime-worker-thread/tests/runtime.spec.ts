@@ -142,6 +142,16 @@ describe('WorkerThreadCodeRuntime — programs and bindings (real workers)', () 
     expect(result.error?.message).toContain('Use backtick template literals')
   })
 
+  it('adds delimiter guidance when a call argument object is not closed', async () => {
+    const { runtime } = await setup()
+    const result = await runtime.run({
+      program: 'return await tools.todo_write({ todos: []);',
+      bindings: [],
+    })
+    expect(result.error?.kind).toBe('exception')
+    expect(result.error?.message).toContain('missing `}` or `]` before `)`')
+  })
+
   it('reports a runtime throw as an exception with the message', async () => {
     const { runtime } = await setup()
     const result = await runtime.run({ program: 'throw new Error("kaboom")', bindings: [] })

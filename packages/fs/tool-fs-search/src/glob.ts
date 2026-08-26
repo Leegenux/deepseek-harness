@@ -10,7 +10,8 @@
  */
 
 import type { Context } from '@deepseek-ai/cordis'
-import { sep } from 'node:path'
+import { homedir } from 'node:os'
+import { isAbsolute, normalize, parse, sep } from 'node:path'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { GenericCallView, SearchResultView, ToolResult } from '@deepseek-ai/dsh-tools'
 import type { SpillRef } from '@deepseek-ai/dsh-spill'
@@ -73,6 +74,28 @@ export function parseGlobArgs(args: { pattern: string; path?: string }): GlobInp
   if (args.pattern.trim().length === 0) throw new Error('pattern must be a non-empty string')
   if (args.path !== undefined && args.path.trim().length === 0) throw new Error('path must be a non-empty string when given')
   return { pattern: args.pattern, ...args.path !== undefined ? { path: args.path } : {} }
+}
+
+/** Compare normalized filesystem paths, folding case only on Windows. */
+function samePath(left: string, right: string): boolean {
+  const normalizedLeft = normalize(left)
+  const normalizedRight = normalize(right)
+  return process.platform === 'win32'
+    ? normalizedLeft.toLowerCase() === normalizedRight.toLowerCase()
+    : normalizedLeft === normalizedRight
+}
+
+/** Reject obvious whole-home/root recursive traversals before they consume the shared tool timeout. */
+function rejectExpansiveGlob(input: GlobInput): void {
+  if (input.path === undefined) return
+  const slashPattern = input.pattern.replaceAll('\\', '/')
+  const searchesEveryDepth = !slashPattern.includes('/') || slashPattern.startsWith('**/')
+  if (!searchesEveryDepth) return
+  const targetsHome = samePath(input.path, homedir())
+  const targetsFilesystemRoot = isAbsolute(input.path) && samePath(input.path, parse(normalize(input.path)).root)
+  if (!targetsHome && !targetsFilesystemRoot) return
+  const scope = targetsHome ? 'entire home directory' : 'filesystem root'
+  throw new Error(`glob pattern ${JSON.stringify(input.pattern)} under ${JSON.stringify(input.path)} would recursively scan the ${scope} and may time out; narrow path to the expected subtree before searching`)
 }
 
 /**
@@ -302,6 +325,7 @@ export function applyGlobTool(ctx: Context, caps: GlobToolCaps): void {
     name: 'tool:glob',
     order: 103,
     text: 'Use the glob tool — not shell find — to discover files by path pattern. A pattern with no "/" matches basenames at any depth, so "*" matches every file in the tree rather than its top level. '
+      + 'Do not run a basename-only or `**/`-prefixed pattern against the user home or a filesystem root; narrow `path` to the expected subtree first. '
       + `Results are files only, never directories, and include hidden and ignored files: a result that fits comes back in modification-time order, ${overCapGuidance}`,
   })
 
@@ -341,6 +365,7 @@ export function applyGlobTool(ctx: Context, caps: GlobToolCaps): void {
     },
     async execute(args, exec) {
       const input = parseGlobArgs(args)
+      rejectExpansiveGlob(input)
       const run = await runRipgrep(ctx, exec, 'glob', buildGlobCommand(input), caps.rawOutputMaxBytes, caps.graceMs, caps.stderrMaxBytes)
       const root = input.path === undefined ? '.' : toWorkdirRelative(input.path, run.workdir)
       if (run.noMatches) return { root, paths: [] }

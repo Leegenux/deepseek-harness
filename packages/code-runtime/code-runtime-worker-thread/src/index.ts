@@ -110,11 +110,14 @@ function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
-/** Add one actionable recovery hint for the parser shape caused by unescaped quotes inside a same-quote literal. */
+/** Add actionable recovery hints for common model-authored parser failures. */
 function typeStripFailureMessage(error: unknown): string {
   const message = messageOf(error)
   if (message === "Expected ',', got 'ident'") {
     return `${message}\nHint: Use backtick template literals for string data that contains quotes; do not paste unescaped quotes into a same-quote literal.`
+  }
+  if (message === "Expected ',', got ')'") {
+    return message + '\nHint: A nested tool-call argument is likely missing `}` or `]` before `)`; format objects and arrays across lines and close every delimiter in order.'
   }
   return message
 }

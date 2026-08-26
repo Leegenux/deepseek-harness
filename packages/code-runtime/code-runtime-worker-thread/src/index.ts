@@ -110,6 +110,15 @@ function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
+/** Add one actionable recovery hint for the parser shape caused by unescaped quotes inside a same-quote literal. */
+function typeStripFailureMessage(error: unknown): string {
+  const message = messageOf(error)
+  if (message === "Expected ',', got 'ident'") {
+    return `${message}\nHint: Use backtick template literals for string data that contains quotes; do not paste unescaped quotes into a same-quote literal.`
+  }
+  return message
+}
+
 /** Resolve after a worker pipe emits all queued data, or closes/errors during termination. */
 function waitForPipeDrain(stream: Readable): Promise<void> {
   if (stream.readableEnded || stream.destroyed) return Promise.resolve()
@@ -305,7 +314,7 @@ export class WorkerThreadCodeRuntime extends CodeRuntime {
       // A program that does not survive the type-strip (syntax error,
       // non-erasable syntax like `enum`) is a program failure, reported the
       // same way a thrown exception would be — and no worker ever spawns.
-      return this.failureBeforeWorker({ kind: 'exception', message: messageOf(error) })
+      return this.failureBeforeWorker({ kind: 'exception', message: typeStripFailureMessage(error) })
     }
 
     return await this.execute(request, code, bindings)

@@ -49,7 +49,9 @@ const TYPESCRIPT_FLAVOR: RunCodeFlavor = {
     + 'arguments: `code`, the BODY of an async function (erasable syntax only; top-level '
     + '`await` and `return` work), and `description`, a short summary of what the program '
     + 'does. Call tools as `await tools.name(args)` per the declarations in the system '
-    + 'prompt. Only what you print or return is program output — curate it. Image-bearing '
+    + 'prompt. Use backtick template literals for string data that contains quotes, such as '
+    + 'search queries with exact phrases; never paste unescaped quotes into a same-quote literal. '
+    + 'Only what you print or return is program output — curate it. Image-bearing '
     + 'subtool results are attached after the run.',
   codeDescription: 'The program: the body of an async TypeScript function.',
 }

@@ -403,6 +403,7 @@ describe('mode-aware wire contribution', () => {
     // schema: prose that describes the call as "pass the program" is what
     // leads a model to emit `{code}` alone and fail INVALID_ARGS.
     expect(runCodeSchema?.description).toContain('`description`')
+    expect(runCodeSchema?.description).toContain('Use backtick template literals for string data that contains quotes')
     const codeParam = (runCodeSchema?.parameters as { properties: { code: { description: string } } }).properties.code
     expect(codeParam.description).toBe('The program: the body of an async TypeScript function.')
   })

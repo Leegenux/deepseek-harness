@@ -175,6 +175,27 @@ describe('spawn construction (pure, every platform)', () => {
     }
   }
 
+  async function captureSpawns(windowsHide: boolean): Promise<SubprocessSpawnSpec[]> {
+    const ctx = new Context()
+    const subprocess = new CapturingSubprocessRuntime(ctx)
+    await ctx.plugin(PwshLocalExecutor, { windowsHide })
+    await ctx.shell.run(ctx.shell.resolve({ command: 'Write-Output foreground' }))
+    ctx.shell.start(ctx.shell.resolve({ command: 'Write-Output background' }))
+    return subprocess.specs
+  }
+
+  it('copies windowsHide true into foreground and background spawn specs', async () => {
+    const specs = await captureSpawns(true)
+
+    expect(specs.map(spec => spec.windowsHide)).toEqual([true, true])
+  })
+
+  it('copies windowsHide false into foreground and background spawn specs', async () => {
+    const specs = await captureSpawns(false)
+
+    expect(specs.map(spec => spec.windowsHide)).toEqual([false, false])
+  })
+
   it('runs every command as ONE argv element under the UTF-8 encoding preamble', async () => {
     const ctx = new Context()
     const subprocess = new CapturingSubprocessRuntime(ctx)

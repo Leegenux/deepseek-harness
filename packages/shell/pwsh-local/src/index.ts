@@ -68,6 +68,8 @@ export interface Config {
   maxSpillBytes?: number
   /** Grace period for kill escalation and inherited pipes; at most `MAX_TIMER_DELAY_MS`. */
   graceMs?: number
+  /** Hide the PowerShell console window on Windows. */
+  windowsHide?: boolean
   /**
    * Explicit pwsh executable. When omitted, well-known Windows install
    * locations and PATH entries are probed in order (PowerShell 7 install,
@@ -135,6 +137,7 @@ export class PwshLocalExecutor extends ShellExecutor {
     maxOutputBytes: z.number().default(64_000),
     maxSpillBytes: z.number().default(DEFAULT_MAX_SPILL_BYTES),
     graceMs: z.number().default(DEFAULT_GRACE_MS),
+    windowsHide: z.boolean().default(true),
     pwshPath: z.string(),
   })
 
@@ -236,6 +239,7 @@ export class PwshLocalExecutor extends ShellExecutor {
         stderr: collect(this.config.maxOutputBytes),
       },
       graceMs: this.config.graceMs,
+      windowsHide: this.config.windowsHide,
       signal,
       env: { ...ENV_OVERRIDES, ...spec.env, ...spec.dshEnv },
     }

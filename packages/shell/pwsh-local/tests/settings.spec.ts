@@ -43,6 +43,22 @@ async function boot(config: ConstructorParameters<typeof PwshLocalExecutor>[1] =
 }
 
 describe('pwsh executor over the bash settings section', () => {
+  it('defaults windowsHide to true', async () => {
+    const bench = await boot()
+
+    expect(bench.pwsh.config.windowsHide).toBe(true)
+    await bench.ctx.fiber.dispose()
+  })
+
+  it('accepts a runtime windowsHide update to false', async () => {
+    const bench = await boot()
+
+    await bench.ctx.settings.update(SHELL_SETTINGS_NAMESPACE, { windowsHide: false })
+
+    expect(bench.pwsh.config.windowsHide).toBe(false)
+    await bench.ctx.fiber.dispose()
+  })
+
   it('resolves the user layer over the composition entry', async () => {
     const bench = await boot()
     expect(bench.pwsh.config.timeoutMs).toBe(60_000)

@@ -77,6 +77,8 @@ export interface SubprocessSpawnSpec {
   argv: readonly string[]
   /** Working directory for the child. */
   cwd: string
+  /** Whether to suppress the child process window on Windows; ignored on other platforms. */
+  windowsHide?: boolean
   /** Per-stream stdio dispositions. */
   stdio: SubprocessStdio
   /**

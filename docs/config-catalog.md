@@ -1555,6 +1555,8 @@ export interface Config {
   maxSpillBytes?: number
   /** Grace period for kill escalation and inherited pipes; at most `MAX_TIMER_DELAY_MS`. */
   graceMs?: number
+  /** Hide the PowerShell console window on Windows (default: true); no effect outside Windows. */
+  windowsHide?: boolean
   /**
    * Explicit pwsh executable. When omitted, well-known Windows install
    * locations and PATH entries are probed in order (PowerShell 7 install,

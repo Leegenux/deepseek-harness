@@ -138,7 +138,8 @@ export class SessionCommandController {
         cwd,
         ...(request.agentPreset === undefined ? {} : { agentPreset: request.agentPreset }),
         reusable: sessionId => !this.ctx.workspaceRegistry.archivedSessionIds.includes(sessionId)
-          && (workspace === undefined || workspace.sessionIds.includes(sessionId)),
+          && (workspace === undefined || workspace.sessionIds.includes(sessionId))
+          && this.ctx.bail('session/exclude-blank-reuse', sessionId) !== true,
       })
     } catch (error) {
       this.rejectCreation(error)

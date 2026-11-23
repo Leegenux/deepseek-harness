@@ -77,6 +77,11 @@ declare module '@deepseek-ai/cordis' {
     /** Host Session business API and Remote namespace owner. */
     sessionController: SessionController
   }
+
+  interface Events {
+    /** Return true to reserve an existing blank Session for an extension. Otherwise return undefined. */
+    'session/exclude-blank-reuse'(sessionId: SessionId): true | undefined
+  }
 }
 
 /** Session Controller deployment policy. */

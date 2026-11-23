@@ -36,6 +36,7 @@ interface StoredSession {
 }
 
 interface HarnessOptions {
+  readonly cwd?: string
   /** Declared presets; the first is the default. Omitted, no roster is composed. */
   readonly presets?: readonly string[]
   /** Stored Sessions keyed by id. */
@@ -61,8 +62,8 @@ interface HarnessOptions {
 const WORKSPACE = 'workspace-1' as WorkspaceId
 
 async function harness(options: HarnessOptions = {}) {
-  const cwd = realpathSync(mkdtempSync(join(tmpdir(), 'dsh-session-preset-')))
-  tempDirs.push(cwd)
+  const cwd = options.cwd ?? realpathSync(mkdtempSync(join(tmpdir(), 'dsh-session-preset-')))
+  if (options.cwd === undefined) tempDirs.push(cwd)
   const ctx = new Context()
   contexts.push(ctx)
   await ctx.plugin(SessionStore)
@@ -689,6 +690,28 @@ describe('session.create reuse of a stored blank Session', () => {
 })
 
 describe('session.create Workspace placement', () => {
+  it.each(['live', 'stored'] as const)('skips an extension-owned %s blank Workspace member', async (state) => {
+    const draft = brandString<SessionId>('external-draft')
+    const cwd = realpathSync(mkdtempSync(join(tmpdir(), 'dsh-session-extension-draft-')))
+    tempDirs.push(cwd)
+    const { ctx, remote, resumed } = await harness({
+      cwd,
+      presets: ['standard'],
+      workspace: { members: [draft], archived: [] },
+      ...(state === 'stored' ? { stored: new Map([[draft, { header: storedHeader(draft, cwd), events: [] }]]) } : {}),
+    })
+    if (state === 'live') await remote.create({ sessionId: draft })
+    await ctx.plugin((extension) => {
+      extension.on('session/exclude-blank-reuse', id => id === draft ? true : undefined)
+    })
+
+    const created = await remote.create({ sessionId: draft, workspaceId: WORKSPACE })
+
+    if (!created.ok) throw new Error(`create failed: ${created.error.message}`)
+    expect(created.value.sessionId).not.toBe(draft)
+    expect(resumed).toEqual([])
+  })
+
   it('reuses a blank member of the requested Workspace', async () => {
     const draft = brandString<SessionId>('member-draft')
     const { remote } = await harness({ presets: ['standard'], workspace: { members: [draft], archived: [] } })
